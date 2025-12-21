@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using System.Collections; // Cần thiết để dùng Coroutine
 
 [System.Serializable]
 public struct GemResistance
@@ -16,26 +17,44 @@ public class Boss : MonoBehaviour
     public float currentHealth;
 
     [Header("UI")]
-    // Dùng 'Image' để điều khiển 'fillAmount'
     public Image healthBar;
 
     [Header("Weaknesses & Resistances")]
     public List<GemResistance> resistances = new List<GemResistance>();
 
+    [Header("Visual Effects")]
+    public Color flashColor = Color.red; // Màu khi bị dính đòn
+    public float flashDuration = 0.1f;    // Thời gian nháy
+    private SpriteRenderer spriteRenderer;
+    private Color originalColor;
+
     void Start()
     {
         currentHealth = maxHealth;
+
+        // Lấy SpriteRenderer để điều chỉnh màu sắc
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
+            originalColor = spriteRenderer.color; // Lưu lại màu gốc (trắng)
+        }
+
         UpdateHealthBar();
     }
 
     public void TakeDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
-        if (currentHealth < 0)
-        {
-            currentHealth = 0;
-        }
+        if (currentHealth < 0) currentHealth = 0;
+
         UpdateHealthBar();
+
+        // Kích hoạt hiệu ứng nháy đỏ
+        if (spriteRenderer != null)
+        {
+            StopAllCoroutines(); // Dừng các lần nháy trước đó nếu có
+            StartCoroutine(FlashRedEffect());
+        }
 
         if (currentHealth <= 0)
         {
@@ -46,24 +65,27 @@ public class Boss : MonoBehaviour
         }
     }
 
+    // Coroutine đổi màu Boss sang đỏ rồi quay lại bình thường
+    IEnumerator FlashRedEffect()
+    {
+        spriteRenderer.color = flashColor; // Đổi sang màu đỏ
+        yield return new WaitForSeconds(flashDuration); // Đợi một chút
+        spriteRenderer.color = originalColor; // Trả về màu gốc
+    }
+
     public float GetMultiplierForGem(string gemTag)
     {
         foreach (GemResistance res in resistances)
         {
-            if (res.gemTag == gemTag)
-            {
-                return res.multiplier;
-            }
+            if (res.gemTag == gemTag) return res.multiplier;
         }
         return 1.0f;
     }
 
-    // Hàm cập nhật UI dùng fillAmount
     void UpdateHealthBar()
     {
         if (healthBar != null)
         {
-            // Cập nhật thanh máu bằng cách thay đổi giá trị Fill Amount
             healthBar.fillAmount = currentHealth / maxHealth;
         }
     }
